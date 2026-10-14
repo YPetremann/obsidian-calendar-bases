@@ -122,6 +122,8 @@ export class CalendarView extends BasesView {
             settings={readCalendarSettings(this.config)}
             weekStartDay={this.weekStartDay}
             properties={this.config.getOrder() || []}
+            eventTypeProperty={this.config.getAsPropertyId("eventType")}
+            eventColorProperty={this.config.getAsPropertyId("eventColor")}
             onEntryClick={(entry, isModEvent) => {
               void this.app.workspace.openLinkText(entry.file.path, "", isModEvent);
             }}
@@ -414,32 +416,46 @@ export class CalendarView extends BasesView {
         type: "group",
         items: [
           {
-            displayName: "Start Event",
+            displayName: "Event Start",
             type: "property",
             key: "startEvent",
             placeholder: "Property",
             default: "start date",
           },
           {
-            displayName: "Start Event (alternative)",
+            displayName: "Event Start (alternative)",
             type: "property",
             key: "startEventAlt",
             placeholder: "Property",
             default: "start time",
           },
           {
-            displayName: "End Date",
+            displayName: "Event End",
             type: "property",
             key: "endEvent",
             placeholder: "Property",
             default: "end date",
           },
           {
-            displayName: "End Date & Time",
+            displayName: "Event End (alternative)",
             type: "property",
             key: "endEventAlt",
             placeholder: "Property",
             default: "end time",
+          },
+          {
+            displayName: "Event Type",
+            type: "property",
+            key: "eventType",
+            placeholder: "Property",
+            default: "type",
+          },
+          {
+            displayName: "Event Color",
+            type: "property",
+            key: "eventColor",
+            placeholder: "Property",
+            default: "color",
           },
         ],
       },

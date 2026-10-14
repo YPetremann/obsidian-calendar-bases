@@ -3,13 +3,49 @@ import type { BasesEntry, BasesPropertyId } from "obsidian";
 import { deepEqual, equal } from "node:assert/strict";
 import { test } from "node:test";
 
-import { exclusiveEnd, formatEventDate, getEventTiming, resolveCalendarEntries } from "./calendar-events";
+import {
+  exclusiveEnd,
+  formatEventDate,
+  getEventTiming,
+  readEventAppearance,
+  resolveCalendarEntries,
+} from "./calendar-events";
 
 const entry = { file: { path: "Event.md" } } as BasesEntry;
 const value = (propertyId: BasesPropertyId, day: number, hasTime = false, hour = 0) => ({
   propertyId,
   date: new Date(2026, 9, day, hour),
   hasTime,
+});
+
+test("defaults event appearance when properties are not configured or unavailable", () => {
+  deepEqual(readEventAppearance(entry, null, null), { display: "auto", color: undefined });
+  const missing = { getValue: () => null } as unknown as BasesEntry;
+  deepEqual(readEventAppearance(missing, "note.type", "note.color"), { display: "auto", color: undefined });
+  const unavailable = {
+    getValue: () => {
+      throw new Error("Unavailable property");
+    },
+  } as unknown as BasesEntry;
+  deepEqual(readEventAppearance(unavailable, "note.type", "note.color"), { display: "auto", color: undefined });
+});
+
+test("maps every supported event display and reads the selected color property", () => {
+  for (const display of ["auto", "block", "list-item", "background"]) {
+    const styled = {
+      getValue: (property: BasesPropertyId) => ({
+        toString: () => (property === "note.type" ? ` ${display} ` : " #ff6600 "),
+      }),
+    } as unknown as BasesEntry;
+    deepEqual(readEventAppearance(styled, "note.type", "note.color"), { display, color: "#ff6600" });
+  }
+});
+
+test("ignores invalid event types and empty color values", () => {
+  const invalid = {
+    getValue: (property: BasesPropertyId) => ({ toString: () => (property === "note.type" ? "invalid" : "  ") }),
+  } as unknown as BasesEntry;
+  deepEqual(readEventAppearance(invalid, "note.type", "note.color"), { display: "auto", color: undefined });
 });
 
 test("accepts an alternative alone and ignores entries without a start", () => {
