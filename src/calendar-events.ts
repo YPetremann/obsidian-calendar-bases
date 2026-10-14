@@ -1,3 +1,4 @@
+import type { EventInput } from "@fullcalendar/core";
 import type { BasesEntry, BasesPropertyId } from "obsidian";
 
 export interface EventDate {
@@ -11,6 +12,25 @@ export interface CalendarEntry {
   entry: BasesEntry;
   start: EventDate;
   end?: EventDate;
+}
+
+export function readEventAppearance(
+  entry: BasesEntry,
+  typeProperty: BasesPropertyId | null,
+  colorProperty: BasesPropertyId | null,
+): Pick<EventInput, "display" | "color"> {
+  const readText = (property: BasesPropertyId | null): string | undefined => {
+    if (!property) return undefined;
+    try {
+      return entry.getValue(property)?.toString().trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const type = readText(typeProperty);
+  const display =
+    type && ["auto", "block", "list-item", "background"].includes(type) ? type : "auto";
+  return { display, color: readText(colorProperty) };
 }
 
 function preferredDates(values: EventDate[]): EventDate[] {

@@ -13,7 +13,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import { DateValue, parsePropertyId } from "obsidian";
 import { useCallback, useEffect, useRef } from "react";
 
-import { getEventTiming } from "./calendar-events";
+import { getEventTiming, readEventAppearance } from "./calendar-events";
 import { getCalendarOptions } from "./calendar-options";
 import { useApp } from "./hooks";
 
@@ -26,6 +26,8 @@ interface CalendarReactViewProps {
   settings: CalendarSettings;
   weekStartDay: number;
   properties: BasesPropertyId[];
+  eventTypeProperty: BasesPropertyId | null;
+  eventColorProperty: BasesPropertyId | null;
   onEntryClick: (entry: BasesEntry, isModEvent: boolean) => void;
   onEntryContextMenu: (evt: React.MouseEvent, entry: BasesEntry) => void;
   onEventDrop?: (entry: CalendarEntry, newStart: Date, newEnd?: Date) => Promise<void>;
@@ -68,6 +70,8 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
   settings,
   weekStartDay,
   properties,
+  eventTypeProperty,
+  eventColorProperty,
   onEntryClick,
   onEntryContextMenu,
   onEventDrop,
@@ -99,6 +103,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       id: calEntry.id,
       title: calEntry.entry.file.basename,
       ...getEventTiming(calEntry),
+      ...readEventAppearance(calEntry.entry, eventTypeProperty, eventColorProperty),
       editable:
         parsePropertyId(calEntry.start.propertyId).type === "note" &&
         (!calEntry.end || parsePropertyId(calEntry.end.propertyId).type === "note"),
@@ -284,6 +289,8 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       }}
       navLinks={false}
       events={events}
+      eventBackgroundColor="var(--background-secondary)"
+      eventBorderColor="var(--background-secondary)"
       eventContent={renderEventContent}
       eventClick={handleEventClick}
       eventMouseEnter={handleEventMouseEnter}
