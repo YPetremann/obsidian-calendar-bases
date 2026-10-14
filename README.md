@@ -39,11 +39,11 @@ To display entries on the calendar, configure a start date property in the view 
 
 ```yaml
 # Date property examples
-startDate: 2025-10-15
-startDate: 2025-10-15T10:00:00
+startEvent: 2025-10-15
+startEvent: 2025-10-15T10:00:00
 
 # Optional end date for multi-day events
-endDate: 2025-10-18
+endEvent: 2025-10-18
 ```
 
 Any JavaScript-parseable date format is supported. For multi-day events, configure both a start date and an optional end date property.

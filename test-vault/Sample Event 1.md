@@ -1,6 +1,6 @@
 ---
 date: 2026-05-04
-endDate: 2026-05-06
+endEvent: 2026-05-06
 tags:
   - event
 related: "[[Meeting Notes]]"

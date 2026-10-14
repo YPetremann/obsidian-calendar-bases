@@ -1,13 +1,20 @@
 import type { EventApi, EventClickArg, EventContentArg, EventDropArg } from "@fullcalendar/core";
 import type { BasesEntry, BasesPropertyId, Value } from "obsidian";
 import type React from "react";
+import type { CalendarEntry } from "./calendar-events";
+import type { CalendarSettings } from "./calendar-options";
 
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import listPlugin from "@fullcalendar/list";
+import multiMonthPlugin from "@fullcalendar/multimonth";
 import FullCalendar from "@fullcalendar/react";
-import { DateValue } from "obsidian";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import { DateValue, parsePropertyId } from "obsidian";
 import { useCallback, useEffect, useRef } from "react";
 
+import { getEventTiming } from "./calendar-events";
+import { getCalendarOptions } from "./calendar-options";
 import { useApp } from "./hooks";
 
 export interface CalendarHandle {
@@ -16,23 +23,54 @@ export interface CalendarHandle {
 
 interface CalendarReactViewProps {
   entries: CalendarEntry[];
+  settings: CalendarSettings;
   weekStartDay: number;
   properties: BasesPropertyId[];
   onEntryClick: (entry: BasesEntry, isModEvent: boolean) => void;
   onEntryContextMenu: (evt: React.MouseEvent, entry: BasesEntry) => void;
-  onEventDrop?: (entry: BasesEntry, newStart: Date, newEnd?: Date) => Promise<void>;
-  editable: boolean;
+  onEventDrop?: (entry: CalendarEntry, newStart: Date, newEnd?: Date) => Promise<void>;
   calendarHandleRef?: React.RefObject<CalendarHandle | null>;
 }
 
+const PropertyValue: React.FC<{ value: Value }> = ({ value }) => {
+  const app = useApp();
+  const elementRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (!node || !app) return;
+
+      node.replaceChildren();
+      if (!(value instanceof DateValue)) {
+        value.renderTo(node, app.renderContext);
+        return;
+      }
+
+      if ("date" in value && value.date instanceof Date) {
+        const options: Intl.DateTimeFormatOptions = {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        };
+        if ("time" in value && value.time) {
+          options.hour = "2-digit";
+          options.minute = "2-digit";
+        }
+        node.textContent = value.date.toLocaleDateString(undefined, options);
+      }
+    },
+    [value, app],
+  );
+
+  return <span ref={elementRef} />;
+};
+
 export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
   entries,
+  settings,
   weekStartDay,
   properties,
   onEntryClick,
   onEntryContextMenu,
   onEventDrop,
-  editable,
   calendarHandleRef,
 }) => {
   const app = useApp();
@@ -57,41 +95,16 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
   }, [calendarHandleRef]);
 
   const events = entries.map((calEntry) => {
-    // FullCalendar treats end dates as exclusive when allDay is true
-    // We need to add one day to the end date to make it inclusive
-    // But if start and end are the same day, we don't set an end date (single day event)
-    let adjustedEndDate = calEntry.endDate;
-    if (calEntry.endDate) {
-      const startDateOnly = new Date(
-        calEntry.startDate.getFullYear(),
-        calEntry.startDate.getMonth(),
-        calEntry.startDate.getDate(),
-      );
-      const endDateOnly = new Date(
-        calEntry.endDate.getFullYear(),
-        calEntry.endDate.getMonth(),
-        calEntry.endDate.getDate(),
-      );
-
-      if (startDateOnly.getTime() === endDateOnly.getTime()) {
-        // Same day event - don't set end date to avoid showing as multi-day
-        adjustedEndDate = undefined;
-      } else {
-        // Multi-day event - add one day to make end date inclusive
-        adjustedEndDate = new Date(calEntry.endDate);
-        adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
-      }
-    }
-
     return {
-      id: calEntry.entry.file.path,
+      id: calEntry.id,
       title: calEntry.entry.file.basename,
-      start: calEntry.startDate,
-      end: adjustedEndDate,
-      allDay: true,
+      ...getEventTiming(calEntry),
+      editable:
+        parsePropertyId(calEntry.start.propertyId).type === "note" &&
+        (!calEntry.end || parsePropertyId(calEntry.end.propertyId).type === "note"),
       extendedProps: {
         entry: calEntry.entry,
-        originalEndDate: calEntry.endDate, // Keep track of original end date for drag operations
+        calendarEntry: calEntry,
       },
     };
   });
@@ -173,8 +186,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
         return;
       }
 
-      const entry = dropInfo.event.extendedProps.entry as BasesEntry;
-      const originalEndDate = dropInfo.event.extendedProps.originalEndDate as Date | undefined;
+      const entry = dropInfo.event.extendedProps.calendarEntry as CalendarEntry;
       const newStart = dropInfo.event.start;
       const newEnd = dropInfo.event.end;
 
@@ -183,15 +195,12 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
         return;
       }
 
-      // Calculate the actual end date to save
       let actualEndDate: Date | undefined;
-      if (originalEndDate) {
+      if (entry.end) {
         if (newEnd) {
-          // FullCalendar gave us an adjusted end date, we need to subtract one day to get the actual end date
           actualEndDate = new Date(newEnd);
-          actualEndDate.setDate(actualEndDate.getDate() - 1);
+          if (!entry.end.hasTime) actualEndDate.setDate(actualEndDate.getDate() - 1);
         } else {
-          // Single day event - use the start date as the end date
           actualEndDate = new Date(newStart);
         }
       }
@@ -210,56 +219,6 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
     const str = value.toString();
     return Boolean(str && str.trim().length > 0);
   }, []);
-
-  const PropertyValue: React.FC<{ value: Value }> = ({ value }) => {
-    const elementRef = useCallback(
-      (node: HTMLElement | null) => {
-        if (node && app) {
-          // Remove previous content (due to React strict mode causing double calls)
-          while (node.firstChild) {
-            node.removeChild(node.firstChild);
-          }
-
-          if (!(value instanceof DateValue)) {
-            value.renderTo(node, app.renderContext);
-            return;
-          }
-
-          // Special handling for DateValue to show in a more compact format
-          if ("date" in value && value.date && value.date instanceof Date) {
-            if ("time" in value && value.time) {
-              node.appendChild(
-                document.createTextNode(
-                  value.date.toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }),
-                ),
-              );
-            } else {
-              node.appendChild(
-                document.createTextNode(
-                  value.date.toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  }),
-                ),
-              );
-            }
-
-            return;
-          }
-        }
-      },
-      [value],
-    );
-
-    return <span ref={elementRef} />;
-  };
 
   const renderEventContent = useCallback(
     (eventInfo: EventContentArg) => {
@@ -310,9 +269,10 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
 
   return (
     <FullCalendar
+      key={JSON.stringify(settings)}
       ref={calendarRef}
-      plugins={[dayGridPlugin, interactionPlugin]}
-      initialView="dayGridMonth"
+      plugins={[dayGridPlugin, interactionPlugin, timeGridPlugin, listPlugin, multiMonthPlugin]}
+      {...getCalendarOptions(settings)}
       firstDay={weekStartDay}
       headerToolbar={{
         left: "prevYear,prev",
@@ -332,16 +292,14 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       fixedWeekCount={true}
       fixedMirrorParent={document.body ?? undefined}
       eventDurationEditable={false}
-      editable={editable}
+      eventAllow={(dropInfo, event) => {
+        if (!event) return false;
+        const entry = event.extendedProps.calendarEntry as CalendarEntry;
+        return dropInfo.allDay === getEventTiming(entry).allDay;
+      }}
     />
   );
 };
-
-interface CalendarEntry {
-  entry: BasesEntry;
-  startDate: Date;
-  endDate?: Date;
-}
 
 function tryGetValue(entry: BasesEntry, propId: BasesPropertyId): Value | null {
   try {

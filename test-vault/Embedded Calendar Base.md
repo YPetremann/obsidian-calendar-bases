@@ -9,12 +9,12 @@ views:
     order:
       - file.name
       - date
-      - endDate
+      - endEvent
       - tags
       - related
       - url
-    startDate: note.date
-    endDate: note.endDate
+    startEvent: note.date
+    endEvent: note.endEvent
     weekStartDay: monday
 
 ```

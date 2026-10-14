@@ -9,14 +9,14 @@ views:
       - tags
       - related
       - url
-    startDate: note.date
-    endDate: note.endDate
+    startEvent: note.date
+    endEvent: note.endEvent
     weekStartDay: monday
   - type: cards
     name: Table
     order:
       - file.name
       - date
-      - endDate
+      - endEvent
       - tags
       - related

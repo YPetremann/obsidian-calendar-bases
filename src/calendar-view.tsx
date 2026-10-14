@@ -1,21 +1,18 @@
 import type { BasesAllOptions, BasesEntry, BasesPropertyId, BasesViewConfig, QueryController } from "obsidian";
 import type { Root } from "react-dom/client";
 import type { CalendarHandle } from "./CalendarReactView";
+import type { CalendarEntry, EventDate } from "./calendar-events";
 
 import { BasesView, DateValue, Menu, parsePropertyId } from "obsidian";
 import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { CalendarReactView } from "./CalendarReactView";
+import { formatEventDate, resolveCalendarEntries } from "./calendar-events";
+import { readCalendarSettings } from "./calendar-options";
 import { AppContext } from "./context";
 
 export const CalendarViewType = "calendar";
-
-interface CalendarEntry {
-  entry: BasesEntry;
-  startDate: Date;
-  endDate?: Date;
-}
 
 export class CalendarView extends BasesView {
   type = CalendarViewType;
@@ -26,8 +23,8 @@ export class CalendarView extends BasesView {
 
   // Internal rendering data
   private entries: CalendarEntry[] = [];
-  private startDateProp: BasesPropertyId | null = null;
-  private endDateProp: BasesPropertyId | null = null;
+  private startEventProps: BasesPropertyId[] = [];
+  private endEventProps: BasesPropertyId[] = [];
   private weekStartDay: number = 1;
 
   constructor(controller: QueryController, scrollEl: HTMLElement) {
@@ -67,8 +64,12 @@ export class CalendarView extends BasesView {
   }
 
   private loadConfig(): void {
-    this.startDateProp = this.config.getAsPropertyId("startDate");
-    this.endDateProp = this.config.getAsPropertyId("endDate");
+    this.startEventProps = ["startEvent", "startEventAlt"]
+      .map((key) => this.config.getAsPropertyId(key))
+      .filter((property): property is BasesPropertyId => property !== null);
+    this.endEventProps = ["endEvent", "endEventAlt"]
+      .map((key) => this.config.getAsPropertyId(key))
+      .filter((property): property is BasesPropertyId => property !== null);
     const weekStartDayValue = this.config.get("weekStartDay") as string;
 
     const dayNameToNumber: Record<string, number> = {
@@ -85,7 +86,7 @@ export class CalendarView extends BasesView {
   }
 
   private updateCalendar(): void {
-    if (!this.data || !this.startDateProp) {
+    if (!this.data || !this.startEventProps.length) {
       this.root?.unmount();
       this.root = null;
       this.containerEl.empty();
@@ -96,15 +97,13 @@ export class CalendarView extends BasesView {
 
     this.entries = [];
     for (const entry of this.data.data) {
-      const startDate = this.extractDate(entry, this.startDateProp);
-      if (startDate) {
-        const endDate = this.endDateProp ? (this.extractDate(entry, this.endDateProp) ?? undefined) : undefined;
-        this.entries.push({
-          entry,
-          startDate,
-          endDate,
-        });
-      }
+      const starts = this.startEventProps
+        .map((property) => this.extractDate(entry, property))
+        .filter((value): value is EventDate => value !== null);
+      const ends = this.endEventProps
+        .map((property) => this.extractDate(entry, property))
+        .filter((value): value is EventDate => value !== null);
+      this.entries.push(...resolveCalendarEntries(entry, starts, ends));
     }
 
     this.renderReactCalendar();
@@ -120,6 +119,7 @@ export class CalendarView extends BasesView {
         <AppContext.Provider value={this.app}>
           <CalendarReactView
             entries={this.entries}
+            settings={readCalendarSettings(this.config)}
             weekStartDay={this.weekStartDay}
             properties={this.config.getOrder() || []}
             onEntryClick={(entry, isModEvent) => {
@@ -130,7 +130,6 @@ export class CalendarView extends BasesView {
               this.showEntryContextMenu(evt.nativeEvent, entry);
             }}
             onEventDrop={(entry, newStart, newEnd) => this.updateEntryDates(entry, newStart, newEnd)}
-            editable={this.isEditable()}
             calendarHandleRef={this.calendarHandleRef}
           />
         </AppContext.Provider>
@@ -138,26 +137,18 @@ export class CalendarView extends BasesView {
     );
   }
 
-  private isEditable(): boolean {
-    if (!this.startDateProp) return false;
-    const startDateProperty = parsePropertyId(this.startDateProp);
-    if (startDateProperty.type !== "note") return false;
-
-    if (!this.endDateProp) return true;
-    const endDateProperty = parsePropertyId(this.endDateProp);
-    if (endDateProperty.type !== "note") return false;
-
-    return true;
-  }
-
-  private extractDate(entry: BasesEntry, propId: BasesPropertyId): Date | null {
+  private extractDate(entry: BasesEntry, propId: BasesPropertyId): EventDate | null {
     try {
       const value = entry.getValue(propId);
       if (!value) return null;
       if (!(value instanceof DateValue)) return null;
       // Private API
-      if ("date" in value && value.date && value.date instanceof Date) {
-        return value.date;
+      if ("date" in value && value.date instanceof Date && Number.isFinite(value.date.getTime())) {
+        return {
+          propertyId: propId,
+          date: new Date(value.date),
+          hasTime: "time" in value && Boolean(value.time),
+        };
       }
 
       return null;
@@ -183,39 +174,22 @@ export class CalendarView extends BasesView {
     );
   }
 
-  private async updateEntryDates(entry: BasesEntry, newStart: Date, newEnd?: Date): Promise<void> {
-    if (!this.startDateProp) return;
-
-    const file = entry.file;
-    const startPropName = this.startDateProp;
-    const endPropName = this.endDateProp;
-
-    const extractedStartProp = startPropName.startsWith("note.") ? startPropName.slice(5) : null;
-
-    const extractedEndProp = endPropName?.startsWith("note.") ? endPropName.slice(5) : null;
-
-    const shouldUpdate = extractedStartProp !== null && (!this.endDateProp || extractedEndProp !== null);
-
-    if (!shouldUpdate) {
-      return;
+  private async updateEntryDates(event: CalendarEntry, newStart: Date, newEnd?: Date): Promise<void> {
+    const startProperty = parsePropertyId(event.start.propertyId);
+    const endProperty = event.end ? parsePropertyId(event.end.propertyId) : null;
+    if (startProperty.type !== "note" || (endProperty && endProperty.type !== "note")) {
+      throw new Error("Calendar dates must be note properties to be edited");
     }
 
-    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-      const formatDate = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      };
-
-      frontmatter[extractedStartProp] = formatDate(newStart);
-      if (this.endDateProp && newEnd && extractedEndProp) {
-        frontmatter[extractedEndProp] = formatDate(newEnd);
+    await this.app.fileManager.processFrontMatter(event.entry.file, (frontmatter) => {
+      frontmatter[startProperty.name] = formatEventDate(newStart, event.start.hasTime);
+      if (event.end && endProperty?.type === "note" && newEnd) {
+        frontmatter[endProperty.name] = formatEventDate(newEnd, event.end.hasTime);
       }
     });
   }
 
-  public setEphemeralState(state: unknown): void {
+  public setEphemeralState(): void {
     // State management could be extended for React component
   }
 
@@ -237,7 +211,6 @@ export class CalendarView extends BasesView {
           month: "Month",
           months: "Months",
           year: "year",
-          list: "List",
         },
       },
       {
@@ -245,10 +218,10 @@ export class CalendarView extends BasesView {
         // This is composed of two timeGridDay placed side by side
         displayName: "Day settings",
         type: "group",
-        shouldHide: ()=>config.get("view") !== "day",
+        shouldHide: () => config.get("view") !== "day",
         items: [
           {
-            displayName: "Start hour",
+            displayName: "Start day at",
             type: "slider",
             key: "startHour",
             min: 0,
@@ -256,13 +229,13 @@ export class CalendarView extends BasesView {
             default: 6,
           },
           {
-            displayName: "End hour",
+            displayName: "End day at",
             type: "slider",
             key: "endHour",
             min: 0,
             max: 23,
             default: 22,
-          }
+          },
         ],
       },
       {
@@ -270,7 +243,7 @@ export class CalendarView extends BasesView {
         // count select number of days to display
         displayName: "Days settings",
         type: "group",
-        shouldHide: ()=>config.get("view") !== "days",
+        shouldHide: () => config.get("view") !== "days",
         items: [
           {
             // whether we use timeGrid instead of dayGrid
@@ -293,7 +266,7 @@ export class CalendarView extends BasesView {
             min: 0,
             max: 23,
             default: 6,
-            shouldHide: ()=>!config.get("withTime"),
+            shouldHide: () => !config.get("withTime"),
           },
           {
             displayName: "End hour",
@@ -302,7 +275,7 @@ export class CalendarView extends BasesView {
             min: 0,
             max: 23,
             default: 22,
-            shouldHide: ()=>!config.get("withTime"),
+            shouldHide: () => !config.get("withTime"),
           },
         ],
       },
@@ -314,7 +287,7 @@ export class CalendarView extends BasesView {
         // SAM DIM
         displayName: "Week settings",
         type: "group",
-        shouldHide: ()=>config.get("view") !== "week",
+        shouldHide: () => config.get("view") !== "week",
         items: [
           {
             displayName: "Show weekends",
@@ -329,7 +302,7 @@ export class CalendarView extends BasesView {
         // count select number of weeks to display
         displayName: "Weeks settings",
         type: "group",
-        shouldHide: ()=>config.get("view") !== "weeks",
+        shouldHide: () => config.get("view") !== "weeks",
         items: [
           {
             // whether we use timeGrid instead of dayGrid
@@ -357,7 +330,7 @@ export class CalendarView extends BasesView {
             min: 0,
             max: 23,
             default: 6,
-            shouldHide: ()=>!config.get("withTime"),
+            shouldHide: () => !config.get("withTime"),
           },
           {
             displayName: "End hour",
@@ -366,7 +339,7 @@ export class CalendarView extends BasesView {
             min: 0,
             max: 23,
             default: 22,
-            shouldHide: ()=>!config.get("withTime"),
+            shouldHide: () => !config.get("withTime"),
           },
         ],
       },
@@ -374,7 +347,7 @@ export class CalendarView extends BasesView {
         // this is a dayGridMonth view
         displayName: "Month settings",
         type: "group",
-        shouldHide: ()=>config.get("view") !== "month",
+        shouldHide: () => config.get("view") !== "month",
         items: [
           {
             displayName: "Show weekends",
@@ -383,13 +356,13 @@ export class CalendarView extends BasesView {
           },
         ],
       },
-          {
+      {
         // this view display days side by side using the timeGrid or dayGrid layout
         // count permit to display multiples of the layout (eg: 3 days or 2 weeks)
         // if week or month is selected, it display from start of the week or month respectively
         displayName: "Months settings",
         type: "group",
-        shouldHide: ()=>config.get("view") !== "months",
+        shouldHide: () => config.get("view") !== "months",
         items: [
           {
             // whether we use timeGrid instead of dayGrid
@@ -402,6 +375,7 @@ export class CalendarView extends BasesView {
             type: "slider",
             key: "count",
             min: 1,
+            max: 12,
             default: 1,
           },
           {
@@ -409,36 +383,12 @@ export class CalendarView extends BasesView {
             type: "toggle",
             key: "showWeekends",
           },
-          {
-            // whether we use timeGrid instead of dayGrid
-            displayName: "With time",
-            type: "toggle",
-            key: "withTime",
-          },
-          {
-            displayName: "Start hour",
-            type: "slider",
-            key: "startHour",
-            min: 0,
-            max: 23,
-            default: 6,
-            shouldHide: ()=>!config.get("withTime"),
-          },
-          {
-            displayName: "End hour",
-            type: "slider",
-            key: "endHour",
-            min: 0,
-            max: 23,
-            default: 22,
-            shouldHide: ()=>!config.get("withTime"),
-          },
         ],
       },
       {
         displayName: "Year settings",
         type: "group",
-        shouldHide: ()=>config.get("view") !== "year",
+        shouldHide: () => config.get("view") !== "year",
         items: [
           {
             displayName: "Layout",
@@ -455,8 +405,8 @@ export class CalendarView extends BasesView {
             displayName: "alignWeeks",
             type: "toggle",
             key: "alignWeeks",
-            shouldHide: ()=>!["vertical","horizontal"].includes(config.get("layout") as string),
-          }
+            shouldHide: () => !["vertical", "horizontal"].includes(config.get("layout") as string),
+          },
         ],
       },
       {
@@ -464,16 +414,32 @@ export class CalendarView extends BasesView {
         type: "group",
         items: [
           {
-            displayName: "Start date",
+            displayName: "Start Event",
             type: "property",
-            key: "startDate",
+            key: "startEvent",
             placeholder: "Property",
+            default: "start date",
           },
           {
-            displayName: "End date (optional)",
+            displayName: "Start Event (alternative)",
             type: "property",
-            key: "endDate",
+            key: "startEventAlt",
             placeholder: "Property",
+            default: "start time",
+          },
+          {
+            displayName: "End Date",
+            type: "property",
+            key: "endEvent",
+            placeholder: "Property",
+            default: "end date",
+          },
+          {
+            displayName: "End Date & Time",
+            type: "property",
+            key: "endEventAlt",
+            placeholder: "Property",
+            default: "end time",
           },
         ],
       },
