@@ -1,4 +1,4 @@
-import type { BasesAllOptions, BasesEntry, BasesPropertyId, QueryController } from "obsidian";
+import type { BasesAllOptions, BasesEntry, BasesPropertyId, BasesViewConfig, QueryController } from "obsidian";
 import type { Root } from "react-dom/client";
 import type { CalendarHandle } from "./CalendarReactView";
 
@@ -222,11 +222,245 @@ export class CalendarView extends BasesView {
   public getEphemeralState(): unknown {
     return {};
   }
-
-  static getViewOptions(): BasesAllOptions[] {
+  static getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
     return [
       {
-        displayName: "Date properties",
+        displayName: "View",
+        key: "view",
+        type: "dropdown",
+        default: "month",
+        options: {
+          day: "Day",
+          days: "Days",
+          week: "Week",
+          weeks: "Weeks",
+          month: "Month",
+          months: "Months",
+          year: "year",
+          list: "List",
+        },
+      },
+      {
+        // this view is always two columns that cut the day in two halves
+        // This is composed of two timeGridDay placed side by side
+        displayName: "Day settings",
+        type: "group",
+        shouldHide: ()=>config.get("view") !== "day",
+        items: [
+          {
+            displayName: "Start hour",
+            type: "slider",
+            key: "startHour",
+            min: 0,
+            max: 23,
+            default: 6,
+          },
+          {
+            displayName: "End hour",
+            type: "slider",
+            key: "endHour",
+            min: 0,
+            max: 23,
+            default: 22,
+          }
+        ],
+      },
+      {
+        // this view display days side by side using the timeGrid or dayGrid layout
+        // count select number of days to display
+        displayName: "Days settings",
+        type: "group",
+        shouldHide: ()=>config.get("view") !== "days",
+        items: [
+          {
+            // whether we use timeGrid instead of dayGrid
+            displayName: "With time",
+            type: "toggle",
+            key: "withTime",
+          },
+          {
+            displayName: "Count",
+            type: "slider",
+            key: "count",
+            min: 1,
+            max: 14,
+            default: 3,
+          },
+          {
+            displayName: "Start hour",
+            type: "slider",
+            key: "startHour",
+            min: 0,
+            max: 23,
+            default: 6,
+            shouldHide: ()=>!config.get("withTime"),
+          },
+          {
+            displayName: "End hour",
+            type: "slider",
+            key: "endHour",
+            min: 0,
+            max: 23,
+            default: 22,
+            shouldHide: ()=>!config.get("withTime"),
+          },
+        ],
+      },
+      {
+        // this view tries to fit all days based on available space aspect ratio, generally 2x(3-4) or (3-4)x2 grid
+        // --- LUN      --- LUN MAR MER
+        // MAR MER  or  JEU VEN SAM DIM
+        // JEU VEN
+        // SAM DIM
+        displayName: "Week settings",
+        type: "group",
+        shouldHide: ()=>config.get("view") !== "week",
+        items: [
+          {
+            displayName: "Show weekends",
+            type: "toggle",
+            key: "showWeekends",
+          },
+        ],
+      },
+      {
+        // this view display days side by side using the timeGrid or dayGrid layout
+        // this is aligned to week start
+        // count select number of weeks to display
+        displayName: "Weeks settings",
+        type: "group",
+        shouldHide: ()=>config.get("view") !== "weeks",
+        items: [
+          {
+            // whether we use timeGrid instead of dayGrid
+            displayName: "With time",
+            type: "toggle",
+            key: "withTime",
+          },
+          {
+            displayName: "Count",
+            type: "slider",
+            key: "count",
+            min: 1,
+            max: 4,
+            default: 1,
+          },
+          {
+            displayName: "Show weekends",
+            type: "toggle",
+            key: "showWeekends",
+          },
+          {
+            displayName: "Start hour",
+            type: "slider",
+            key: "startHour",
+            min: 0,
+            max: 23,
+            default: 6,
+            shouldHide: ()=>!config.get("withTime"),
+          },
+          {
+            displayName: "End hour",
+            type: "slider",
+            key: "endHour",
+            min: 0,
+            max: 23,
+            default: 22,
+            shouldHide: ()=>!config.get("withTime"),
+          },
+        ],
+      },
+      {
+        // this is a dayGridMonth view
+        displayName: "Month settings",
+        type: "group",
+        shouldHide: ()=>config.get("view") !== "month",
+        items: [
+          {
+            displayName: "Show weekends",
+            type: "toggle",
+            key: "showWeekends",
+          },
+        ],
+      },
+          {
+        // this view display days side by side using the timeGrid or dayGrid layout
+        // count permit to display multiples of the layout (eg: 3 days or 2 weeks)
+        // if week or month is selected, it display from start of the week or month respectively
+        displayName: "Months settings",
+        type: "group",
+        shouldHide: ()=>config.get("view") !== "months",
+        items: [
+          {
+            // whether we use timeGrid instead of dayGrid
+            displayName: "With time",
+            type: "toggle",
+            key: "withTime",
+          },
+          {
+            displayName: "Count",
+            type: "slider",
+            key: "count",
+            min: 1,
+            default: 1,
+          },
+          {
+            displayName: "Show weekends",
+            type: "toggle",
+            key: "showWeekends",
+          },
+          {
+            // whether we use timeGrid instead of dayGrid
+            displayName: "With time",
+            type: "toggle",
+            key: "withTime",
+          },
+          {
+            displayName: "Start hour",
+            type: "slider",
+            key: "startHour",
+            min: 0,
+            max: 23,
+            default: 6,
+            shouldHide: ()=>!config.get("withTime"),
+          },
+          {
+            displayName: "End hour",
+            type: "slider",
+            key: "endHour",
+            min: 0,
+            max: 23,
+            default: 22,
+            shouldHide: ()=>!config.get("withTime"),
+          },
+        ],
+      },
+      {
+        displayName: "Year settings",
+        type: "group",
+        shouldHide: ()=>config.get("view") !== "year",
+        items: [
+          {
+            displayName: "Layout",
+            type: "dropdown",
+            key: "layout",
+            options: {
+              grid: "Grid", // this view use multiMonthYear view, it tries to fit all years months based on available space aspect ratio
+              continuous: "Scroll", // this view use the multiMonthYear view with multiMonthMaxColumns=1
+              vertical: "Vertical", // custom view where each column is a month and days are laid out vertically
+              horizontal: "Horizontal", // custom view where each line is a month and days are laid out horizontally
+            },
+          },
+          {
+            displayName: "alignWeeks",
+            type: "toggle",
+            key: "alignWeeks",
+            shouldHide: ()=>!["vertical","horizontal"].includes(config.get("layout") as string),
+          }
+        ],
+      },
+      {
+        displayName: "Properties",
         type: "group",
         items: [
           {

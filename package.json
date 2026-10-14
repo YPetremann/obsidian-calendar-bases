@@ -18,24 +18,27 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@types/node": "24.6.1",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@typescript-eslint/eslint-plugin": "5.29.0",
-    "@typescript-eslint/parser": "5.29.0",
-    "builtin-modules": "3.3.0",
-    "esbuild": "^0.25.10",
-    "obsidian": "latest",
-    "prettier": "^3.6.2",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.71.2",
+    "@typescript-eslint/parser": "^8.71.2",
+    "builtin-modules": "^5.4.0",
+    "esbuild": "^0.28.2",
+    "obsidian": "^1.14.4",
+    "prettier": "^3.9.10",
     "tslib": "2.8.1",
-    "typescript": "5.9.3"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@fullcalendar/core": "^6.1.19",
+    "@fullcalendar/core": "^6.1.21",
     "@fullcalendar/daygrid": "^6.1.19",
     "@fullcalendar/interaction": "^6.1.19",
-    "@fullcalendar/react": "^6.1.19",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@fullcalendar/list": "^6.1.21",
+    "@fullcalendar/multimonth": "^6.1.21",
+    "@fullcalendar/react": "^6.1.21",
+    "@fullcalendar/timegrid": "^6.1.21",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   }
 }

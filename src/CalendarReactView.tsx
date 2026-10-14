@@ -315,9 +315,9 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       initialView="dayGridMonth"
       firstDay={weekStartDay}
       headerToolbar={{
-        left: "",
+        left: "prevYear,prev",
         center: "title",
-        right: "prev,today,next",
+        right: "today,next,nextYear",
       }}
       buttonText={{
         today: "Today",
