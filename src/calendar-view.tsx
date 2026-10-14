@@ -1,16 +1,12 @@
-import {
-  BasesAllOptions,
-  BasesEntry,
-  BasesPropertyId,
-  BasesView,
-  DateValue,
-  Menu,
-  parsePropertyId,
-  QueryController,
-} from "obsidian";
+import type { BasesAllOptions, BasesEntry, BasesPropertyId, QueryController } from "obsidian";
+import type { Root } from "react-dom/client";
+import type { CalendarHandle } from "./CalendarReactView";
+
+import { BasesView, DateValue, Menu, parsePropertyId } from "obsidian";
 import React, { StrictMode } from "react";
-import { createRoot, Root } from "react-dom/client";
-import { CalendarHandle, CalendarReactView } from "./CalendarReactView";
+import { createRoot } from "react-dom/client";
+
+import { CalendarReactView } from "./CalendarReactView";
 import { AppContext } from "./context";
 
 export const CalendarViewType = "calendar";
@@ -85,9 +81,7 @@ export class CalendarView extends BasesView {
       saturday: 6,
     };
 
-    this.weekStartDay = weekStartDayValue
-      ? (dayNameToNumber[weekStartDayValue] ?? 1)
-      : 1; // Default to Monday
+    this.weekStartDay = weekStartDayValue ? (dayNameToNumber[weekStartDayValue] ?? 1) : 1; // Default to Monday
   }
 
   private updateCalendar(): void {
@@ -104,9 +98,7 @@ export class CalendarView extends BasesView {
     for (const entry of this.data.data) {
       const startDate = this.extractDate(entry, this.startDateProp);
       if (startDate) {
-        const endDate = this.endDateProp
-          ? (this.extractDate(entry, this.endDateProp) ?? undefined)
-          : undefined;
+        const endDate = this.endDateProp ? (this.extractDate(entry, this.endDateProp) ?? undefined) : undefined;
         this.entries.push({
           entry,
           startDate,
@@ -131,19 +123,13 @@ export class CalendarView extends BasesView {
             weekStartDay={this.weekStartDay}
             properties={this.config.getOrder() || []}
             onEntryClick={(entry, isModEvent) => {
-              void this.app.workspace.openLinkText(
-                entry.file.path,
-                "",
-                isModEvent,
-              );
+              void this.app.workspace.openLinkText(entry.file.path, "", isModEvent);
             }}
             onEntryContextMenu={(evt, entry) => {
               evt.preventDefault();
               this.showEntryContextMenu(evt.nativeEvent, entry);
             }}
-            onEventDrop={(entry, newStart, newEnd) =>
-              this.updateEntryDates(entry, newStart, newEnd)
-            }
+            onEventDrop={(entry, newStart, newEnd) => this.updateEntryDates(entry, newStart, newEnd)}
             editable={this.isEditable()}
             calendarHandleRef={this.calendarHandleRef}
           />
@@ -197,28 +183,18 @@ export class CalendarView extends BasesView {
     );
   }
 
-  private async updateEntryDates(
-    entry: BasesEntry,
-    newStart: Date,
-    newEnd?: Date,
-  ): Promise<void> {
+  private async updateEntryDates(entry: BasesEntry, newStart: Date, newEnd?: Date): Promise<void> {
     if (!this.startDateProp) return;
 
     const file = entry.file;
     const startPropName = this.startDateProp;
     const endPropName = this.endDateProp;
 
-    const extractedStartProp = startPropName.startsWith("note.")
-      ? startPropName.slice(5)
-      : null;
+    const extractedStartProp = startPropName.startsWith("note.") ? startPropName.slice(5) : null;
 
-    const extractedEndProp = endPropName?.startsWith("note.")
-      ? endPropName.slice(5)
-      : null;
+    const extractedEndProp = endPropName?.startsWith("note.") ? endPropName.slice(5) : null;
 
-    const shouldUpdate =
-      extractedStartProp !== null &&
-      (!this.endDateProp || extractedEndProp !== null);
+    const shouldUpdate = extractedStartProp !== null && (!this.endDateProp || extractedEndProp !== null);
 
     if (!shouldUpdate) {
       return;

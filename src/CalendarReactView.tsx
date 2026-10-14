@@ -1,14 +1,12 @@
-import type {
-  EventApi,
-  EventClickArg,
-  EventContentArg,
-  EventDropArg,
-} from "@fullcalendar/core";
+import type { EventApi, EventClickArg, EventContentArg, EventDropArg } from "@fullcalendar/core";
+import type { BasesEntry, BasesPropertyId, Value } from "obsidian";
+import type React from "react";
+
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import FullCalendar from "@fullcalendar/react";
-import { BasesEntry, BasesPropertyId, DateValue, Value } from "obsidian";
-import React, { useCallback, useEffect, useRef } from "react";
+import { DateValue } from "obsidian";
+import { useCallback, useEffect, useRef } from "react";
 
 import { useApp } from "./hooks";
 
@@ -22,11 +20,7 @@ interface CalendarReactViewProps {
   properties: BasesPropertyId[];
   onEntryClick: (entry: BasesEntry, isModEvent: boolean) => void;
   onEntryContextMenu: (evt: React.MouseEvent, entry: BasesEntry) => void;
-  onEventDrop?: (
-    entry: BasesEntry,
-    newStart: Date,
-    newEnd?: Date,
-  ) => Promise<void>;
+  onEventDrop?: (entry: BasesEntry, newStart: Date, newEnd?: Date) => Promise<void>;
   editable: boolean;
   calendarHandleRef?: React.RefObject<CalendarHandle | null>;
 }
@@ -119,9 +113,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
         return;
       }
 
-      const clickedExternal = target.closest("a.external-link") as
-        | HTMLAnchorElement
-        | undefined;
+      const clickedExternal = target.closest("a.external-link") as HTMLAnchorElement | undefined;
       if (clickedExternal?.href) {
         return;
       }
@@ -130,7 +122,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       clickInfo.jsEvent.preventDefault();
       onEntryClick(entry, isModEvent);
     },
-    [app, onEntryClick],
+    [onEntryClick],
   );
 
   // Track contextmenu listeners per element to prevent duplicates across hover cycles
@@ -182,9 +174,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       }
 
       const entry = dropInfo.event.extendedProps.entry as BasesEntry;
-      const originalEndDate = dropInfo.event.extendedProps.originalEndDate as
-        | Date
-        | undefined;
+      const originalEndDate = dropInfo.event.extendedProps.originalEndDate as Date | undefined;
       const newStart = dropInfo.event.start;
       const newEnd = dropInfo.event.end;
 
@@ -194,7 +184,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       }
 
       // Calculate the actual end date to save
-      let actualEndDate: Date | undefined = undefined;
+      let actualEndDate: Date | undefined;
       if (originalEndDate) {
         if (newEnd) {
           // FullCalendar gave us an adjusted end date, we need to subtract one day to get the actual end date
@@ -216,7 +206,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
   );
 
   const hasNonEmptyValue = useCallback((value: Value): boolean => {
-    if (!value || !value.isTruthy()) return false;
+    if (!value?.isTruthy()) return false;
     const str = value.toString();
     return Boolean(str && str.trim().length > 0);
   }, []);
@@ -276,8 +266,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       if (!app) return null;
 
       const entry = eventInfo.event.extendedProps.entry as BasesEntry;
-      const validProperties: { propertyId: BasesPropertyId; value: Value }[] =
-        [];
+      const validProperties: { propertyId: BasesPropertyId; value: Value }[] = [];
       for (const prop of properties) {
         const value = tryGetValue(entry, prop);
         if (value && hasNonEmptyValue(value)) {
@@ -311,9 +300,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
         // Fallback to file basename if no properties
         return (
           <div className="bases-calendar-event-content">
-            <div className="bases-calendar-event-title">
-              {entry.file.basename}
-            </div>
+            <div className="bases-calendar-event-title">{entry.file.basename}</div>
           </div>
         );
       }

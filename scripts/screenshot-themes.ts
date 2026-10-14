@@ -14,8 +14,8 @@
  */
 
 import { execSync } from "node:child_process";
-import { mkdirSync, existsSync, readdirSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const VAULT = "test-vault";
 const ROOT = resolve(import.meta.dirname, "..");
@@ -37,16 +37,12 @@ function sleep(ms: number): void {
 
 function setTheme(theme: string): void {
   const escaped = theme.replace(/'/g, "\\'");
-  obsidian(
-    `eval code="app.customCss.setTheme('${escaped}'); 'ok';" vault="${VAULT}"`,
-  );
+  obsidian(`eval code="app.customCss.setTheme('${escaped}'); 'ok';" vault="${VAULT}"`);
   sleep(1000);
 }
 
 function setColorScheme(scheme: "light" | "dark"): void {
-  obsidian(
-    `eval code="app.changeTheme('${scheme === 'dark' ? 'obsidian' : 'moonstone'}'); 'ok';" vault="${VAULT}"`,
-  );
+  obsidian(`eval code="app.changeTheme('${scheme === "dark" ? "obsidian" : "moonstone"}'); 'ok';" vault="${VAULT}"`);
   sleep(500);
 }
 
@@ -108,6 +104,4 @@ for (const theme of themes) {
 // Reset to default theme and light mode
 setTheme("");
 setColorScheme("dark");
-console.log(
-  `\n✅ Done — ${totalScreenshots} screenshots saved to test-screenshots/`,
-);
+console.log(`\n✅ Done — ${totalScreenshots} screenshots saved to test-screenshots/`);

@@ -11,7 +11,7 @@ await Bun.write("manifest.json", JSON.stringify(manifest, null, "\t"));
 // update versions.json with target version and minAppVersion from manifest.json
 // but only if the target version is not already in versions.json
 const versions = JSON.parse(await Bun.file("versions.json").text());
-if (!Object.hasOwnProperty.call(versions, targetVersion)) {
+if (!Object.hasOwn(versions, targetVersion)) {
   versions[targetVersion] = minAppVersion;
   await Bun.write("versions.json", JSON.stringify(versions, null, "\t"));
 }

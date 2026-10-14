@@ -34,7 +34,6 @@ body {
  * counters and *why* the override is needed.
  * ──────────────────────────────────────────────────────────────────────────── */
 .markdown-rendered .bases-calendar-container {
-
   /* ── table ──────────────────────────────────────────────────────────────
    * `.markdown-rendered table` adds block margins that shift the calendar.
    * `.cm-html-embed table, .markdown-rendered table` sets border-collapse
@@ -230,13 +229,12 @@ body {
     @media (hover: hover) {
       &:hover {
         background-color: var(--background-modifier-hover) !important;
-        color: var(--text-normal) !important ;
+        color: var(--text-normal) !important;
       }
     }
 
     &:focus {
-      box-shadow: 0 0 0 var(--input-border-width-focus)
-        var(--background-modifier-border-focus) !important;
+      box-shadow: 0 0 0 var(--input-border-width-focus) var(--background-modifier-border-focus) !important;
     }
   }
 
@@ -302,10 +300,7 @@ body {
      background-image (renders above background-color), keeping composite opaque
      so daygrid cell borders don't show through */
   .fc-event:hover {
-    background-image: linear-gradient(
-      var(--background-modifier-hover),
-      var(--background-modifier-hover)
-    ) !important;
+    background-image: linear-gradient(var(--background-modifier-hover), var(--background-modifier-hover)) !important;
   }
 
   /* Prevent FullCalendar's invisible focus/selected overlay (z-index: 3)
@@ -342,4 +337,3 @@ body {
   flex-direction: column;
   padding: 2px 0px;
 }
-
