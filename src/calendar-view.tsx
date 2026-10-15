@@ -2,6 +2,7 @@ import type { BasesAllOptions, BasesEntry, BasesPropertyId, BasesViewConfig, Que
 import type { Root } from "react-dom/client";
 import type { CalendarHandle } from "./CalendarReactView";
 import type { CalendarEntry, EventDate } from "./calendar-events";
+import type { I18nAdapter } from "./lang/i18n";
 
 import { BasesView, DateValue, Menu, parsePropertyId } from "obsidian";
 import React, { StrictMode } from "react";
@@ -25,7 +26,6 @@ export class CalendarView extends BasesView {
   private entries: CalendarEntry[] = [];
   private startEventProps: BasesPropertyId[] = [];
   private endEventProps: BasesPropertyId[] = [];
-  private weekStartDay: number = 1;
 
   constructor(controller: QueryController, scrollEl: HTMLElement) {
     super(controller);
@@ -70,19 +70,6 @@ export class CalendarView extends BasesView {
     this.endEventProps = ["endEvent", "endEventAlt"]
       .map((key) => this.config.getAsPropertyId(key))
       .filter((property): property is BasesPropertyId => property !== null);
-    const weekStartDayValue = this.config.get("weekStartDay") as string;
-
-    const dayNameToNumber: Record<string, number> = {
-      sunday: 0,
-      monday: 1,
-      tuesday: 2,
-      wednesday: 3,
-      thursday: 4,
-      friday: 5,
-      saturday: 6,
-    };
-
-    this.weekStartDay = weekStartDayValue ? (dayNameToNumber[weekStartDayValue] ?? 1) : 1; // Default to Monday
   }
 
   private updateCalendar(): void {
@@ -120,7 +107,6 @@ export class CalendarView extends BasesView {
           <CalendarReactView
             entries={this.entries}
             settings={readCalendarSettings(this.config)}
-            weekStartDay={this.weekStartDay}
             properties={this.config.getOrder() || []}
             eventTypeProperty={this.config.getAsPropertyId("eventType")}
             eventColorProperty={this.config.getAsPropertyId("eventColor")}
@@ -198,32 +184,32 @@ export class CalendarView extends BasesView {
   public getEphemeralState(): unknown {
     return {};
   }
-  static getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
+  static getViewOptions(config: BasesViewConfig, t: I18nAdapter["t"]): BasesAllOptions[] {
     return [
       {
-        displayName: "View",
+        displayName: t("config.view"),
         key: "view",
         type: "dropdown",
         default: "month",
         options: {
-          day: "Day",
-          days: "Days",
-          week: "Week",
-          weeks: "Weeks",
-          month: "Month",
-          months: "Months",
-          year: "year",
+          day: t("config.day"),
+          days: t("config.days"),
+          week: t("config.week"),
+          weeks: t("config.weeks"),
+          month: t("config.month"),
+          months: t("config.months"),
+          year: t("config.year"),
         },
       },
       {
         // this view is always two columns that cut the day in two halves
         // This is composed of two timeGridDay placed side by side
-        displayName: "Day settings",
+        displayName: t("config.settings", { name: t("config.day") }),
         type: "group",
         shouldHide: () => config.get("view") !== "day",
         items: [
           {
-            displayName: "Start day at",
+            displayName: t("config.startHour"),
             type: "slider",
             key: "startHour",
             min: 0,
@@ -231,7 +217,7 @@ export class CalendarView extends BasesView {
             default: 6,
           },
           {
-            displayName: "End day at",
+            displayName: t("config.endHour"),
             type: "slider",
             key: "endHour",
             min: 0,
@@ -243,18 +229,18 @@ export class CalendarView extends BasesView {
       {
         // this view display days side by side using the timeGrid or dayGrid layout
         // count select number of days to display
-        displayName: "Days settings",
+        displayName: t("config.settings", { name: t("config.days") }),
         type: "group",
         shouldHide: () => config.get("view") !== "days",
         items: [
           {
             // whether we use timeGrid instead of dayGrid
-            displayName: "With time",
+            displayName: t("config.withTime"),
             type: "toggle",
             key: "withTime",
           },
           {
-            displayName: "Count",
+            displayName: t("config.count"),
             type: "slider",
             key: "count",
             min: 1,
@@ -262,7 +248,7 @@ export class CalendarView extends BasesView {
             default: 3,
           },
           {
-            displayName: "Start hour",
+            displayName: t("config.startHour"),
             type: "slider",
             key: "startHour",
             min: 0,
@@ -271,7 +257,7 @@ export class CalendarView extends BasesView {
             shouldHide: () => !config.get("withTime"),
           },
           {
-            displayName: "End hour",
+            displayName: t("config.endHour"),
             type: "slider",
             key: "endHour",
             min: 0,
@@ -287,12 +273,12 @@ export class CalendarView extends BasesView {
         // MAR MER  or  JEU VEN SAM DIM
         // JEU VEN
         // SAM DIM
-        displayName: "Week settings",
+        displayName: t("config.settings", { name: t("config.week") }),
         type: "group",
         shouldHide: () => config.get("view") !== "week",
         items: [
           {
-            displayName: "Show weekends",
+            displayName: t("config.showWeekend"),
             type: "toggle",
             key: "showWeekends",
           },
@@ -302,18 +288,18 @@ export class CalendarView extends BasesView {
         // this view display days side by side using the timeGrid or dayGrid layout
         // this is aligned to week start
         // count select number of weeks to display
-        displayName: "Weeks settings",
+        displayName: t("config.settings", { name: t("config.weeks") }),
         type: "group",
         shouldHide: () => config.get("view") !== "weeks",
         items: [
           {
             // whether we use timeGrid instead of dayGrid
-            displayName: "With time",
+            displayName: t("config.withTime"),
             type: "toggle",
             key: "withTime",
           },
           {
-            displayName: "Count",
+            displayName: t("config.count"),
             type: "slider",
             key: "count",
             min: 1,
@@ -321,12 +307,12 @@ export class CalendarView extends BasesView {
             default: 1,
           },
           {
-            displayName: "Show weekends",
+            displayName: t("config.showWeekend"),
             type: "toggle",
             key: "showWeekends",
           },
           {
-            displayName: "Start hour",
+            displayName: t("config.startHour"),
             type: "slider",
             key: "startHour",
             min: 0,
@@ -335,7 +321,7 @@ export class CalendarView extends BasesView {
             shouldHide: () => !config.get("withTime"),
           },
           {
-            displayName: "End hour",
+            displayName: t("config.endHour"),
             type: "slider",
             key: "endHour",
             min: 0,
@@ -347,12 +333,12 @@ export class CalendarView extends BasesView {
       },
       {
         // this is a dayGridMonth view
-        displayName: "Month settings",
+        displayName: t("config.settings", { name: t("config.month") }),
         type: "group",
         shouldHide: () => config.get("view") !== "month",
         items: [
           {
-            displayName: "Show weekends",
+            displayName: t("config.showWeekend"),
             type: "toggle",
             key: "showWeekends",
           },
@@ -362,18 +348,18 @@ export class CalendarView extends BasesView {
         // this view display days side by side using the timeGrid or dayGrid layout
         // count permit to display multiples of the layout (eg: 3 days or 2 weeks)
         // if week or month is selected, it display from start of the week or month respectively
-        displayName: "Months settings",
+        displayName: t("config.settings", { name: t("config.months") }),
         type: "group",
         shouldHide: () => config.get("view") !== "months",
         items: [
           {
             // whether we use timeGrid instead of dayGrid
-            displayName: "With time",
+            displayName: t("config.withTime"),
             type: "toggle",
             key: "withTime",
           },
           {
-            displayName: "Count",
+            displayName: t("config.count"),
             type: "slider",
             key: "count",
             min: 1,
@@ -381,30 +367,30 @@ export class CalendarView extends BasesView {
             default: 1,
           },
           {
-            displayName: "Show weekends",
+            displayName: t("config.showWeekend"),
             type: "toggle",
             key: "showWeekends",
           },
         ],
       },
       {
-        displayName: "Year settings",
+        displayName: t("config.settings", { name: t("config.year") }),
         type: "group",
         shouldHide: () => config.get("view") !== "year",
         items: [
           {
-            displayName: "Layout",
+            displayName: t("config.layout"),
             type: "dropdown",
             key: "layout",
             options: {
-              grid: "Grid", // this view use multiMonthYear view, it tries to fit all years months based on available space aspect ratio
-              continuous: "Scroll", // this view use the multiMonthYear view with multiMonthMaxColumns=1
-              vertical: "Vertical", // custom view where each column is a month and days are laid out vertically
-              horizontal: "Horizontal", // custom view where each line is a month and days are laid out horizontally
+              grid: t("config.layout.grid"), // this view use multiMonthYear view, it tries to fit all years months based on available space aspect ratio
+              continuous: t("config.layout.continuous"), // this view use the multiMonthYear view with multiMonthMaxColumns=1
+              vertical: t("config.layout.vertical"), // custom view where each column is a month and days are laid out vertically
+              horizontal: t("config.layout.horizontal"), // custom view where each line is a month and days are laid out horizontally
             },
           },
           {
-            displayName: "alignWeeks",
+            displayName: t("config.alignWeeks"),
             type: "toggle",
             key: "alignWeeks",
             shouldHide: () => !["vertical", "horizontal"].includes(config.get("layout") as string),
@@ -412,71 +398,50 @@ export class CalendarView extends BasesView {
         ],
       },
       {
-        displayName: "Properties",
+        displayName: t("config.properties"),
         type: "group",
         items: [
           {
-            displayName: "Event Start",
+            displayName: t("property.startEvent"),
             type: "property",
             key: "startEvent",
-            placeholder: "Property",
+            placeholder: t("Property"),
             default: "start date",
           },
           {
-            displayName: "Event Start (alternative)",
+            displayName: t("property.startEventAlt"),
             type: "property",
             key: "startEventAlt",
-            placeholder: "Property",
+            placeholder: t("Property"),
             default: "start time",
           },
           {
-            displayName: "Event End",
+            displayName: t("property.endEvent"),
             type: "property",
             key: "endEvent",
-            placeholder: "Property",
+            placeholder: t("Property"),
             default: "end date",
           },
           {
-            displayName: "Event End (alternative)",
+            displayName: t("property.endEventAlt"),
             type: "property",
             key: "endEventAlt",
-            placeholder: "Property",
+            placeholder: t("Property"),
             default: "end time",
           },
           {
-            displayName: "Event Type",
+            displayName: t("property.eventType"),
             type: "property",
             key: "eventType",
-            placeholder: "Property",
+            placeholder: t("Property"),
             default: "type",
           },
           {
-            displayName: "Event Color",
+            displayName: t("property.eventColor"),
             type: "property",
             key: "eventColor",
-            placeholder: "Property",
+            placeholder: t("Property"),
             default: "color",
-          },
-        ],
-      },
-      {
-        displayName: "Calendar options",
-        type: "group",
-        items: [
-          {
-            displayName: "Week starts on",
-            type: "dropdown",
-            key: "weekStartDay",
-            default: "monday",
-            options: {
-              sunday: "Sunday",
-              monday: "Monday",
-              tuesday: "Tuesday",
-              wednesday: "Wednesday",
-              thursday: "Thursday",
-              friday: "Friday",
-              saturday: "Saturday",
-            },
           },
         ],
       },

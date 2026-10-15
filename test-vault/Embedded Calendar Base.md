@@ -15,8 +15,6 @@ views:
       - url
     startEvent: note.date
     endEvent: note.endEvent
-    weekStartDay: monday
-
 ```
 
 ## Regular Markdown Table

@@ -35,7 +35,7 @@ export function readCalendarSettings(config: { get(key: string): unknown }): Cal
     withTime: config.get("withTime") === true,
     showWeekends: config.get("showWeekends") !== false,
     startHour,
-    endHour: Math.max(startHour + 1, numberOption("endHour", 22, 1, 24)),
+    endHour: Math.max(startHour, numberOption("endHour", 22, 0, 23)),
     layout:
       typeof selectedLayout === "string" && ["grid", "continuous", "vertical", "horizontal"].includes(selectedLayout)
         ? (selectedLayout as YearLayout)
@@ -50,7 +50,7 @@ export function getCalendarOptions(settings: CalendarSettings): CalendarOptions 
     initialView: "configured",
     weekends: settings.showWeekends,
     slotMinTime: { hours: settings.startHour },
-    slotMaxTime: { hours: settings.endHour },
+    slotMaxTime: { hours: settings.endHour + 1 },
     multiMonthMaxColumns: settings.layout === "continuous" ? 1 : 3,
     views: {
       configured: {

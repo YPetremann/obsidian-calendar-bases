@@ -4,13 +4,14 @@ import type React from "react";
 import type { CalendarEntry } from "./calendar-events";
 import type { CalendarSettings } from "./calendar-options";
 
+import allLocales from "@fullcalendar/core/locales-all";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import multiMonthPlugin from "@fullcalendar/multimonth";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import { DateValue, parsePropertyId } from "obsidian";
+import { DateValue, getLanguage, parsePropertyId } from "obsidian";
 import { useCallback, useEffect, useRef } from "react";
 
 import { getEventTiming, readEventAppearance } from "./calendar-events";
@@ -24,7 +25,6 @@ export interface CalendarHandle {
 interface CalendarReactViewProps {
   entries: CalendarEntry[];
   settings: CalendarSettings;
-  weekStartDay: number;
   properties: BasesPropertyId[];
   eventTypeProperty: BasesPropertyId | null;
   eventColorProperty: BasesPropertyId | null;
@@ -56,7 +56,7 @@ const PropertyValue: React.FC<{ value: Value }> = ({ value }) => {
           options.hour = "2-digit";
           options.minute = "2-digit";
         }
-        node.textContent = value.date.toLocaleDateString(undefined, options);
+        node.textContent = value.date.toLocaleDateString(getLanguage(), options);
       }
     },
     [value, app],
@@ -68,7 +68,6 @@ const PropertyValue: React.FC<{ value: Value }> = ({ value }) => {
 export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
   entries,
   settings,
-  weekStartDay,
   properties,
   eventTypeProperty,
   eventColorProperty,
@@ -278,14 +277,12 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       ref={calendarRef}
       plugins={[dayGridPlugin, interactionPlugin, timeGridPlugin, listPlugin, multiMonthPlugin]}
       {...getCalendarOptions(settings)}
-      firstDay={weekStartDay}
+      locales={allLocales}
+      locale={getLanguage()}
       headerToolbar={{
         left: "prevYear,prev",
         center: "title",
         right: "today,next,nextYear",
-      }}
-      buttonText={{
-        today: "Today",
       }}
       navLinks={false}
       events={events}
